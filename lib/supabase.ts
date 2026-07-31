@@ -8,17 +8,9 @@ export const supabase = createClient(
   { auth: { persistSession: false } }
 );
 
-export type Customer = {
-  phone_number: string;
-  name: string | null;
-  branch_id: number | null;
-  state: "new" | "awaiting_branch" | "active";
-  paused: boolean;
-  first_seen: string;
-  last_seen: string;
-};
-
-export type Branch = {
-  id: number;
-  name: string;
-};
+export type {
+  Branch,
+  Customer,
+  CustomerWithBranch,
+  Message,
+} from "./db-types";

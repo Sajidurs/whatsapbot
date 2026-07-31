@@ -32,6 +32,8 @@ type IncomingWhatsAppMessage = {
 
 export async function POST(request: NextRequest) {
   const payload = await request.json();
+  console.log("WhatsApp webhook payload:", JSON.stringify(payload, null, 2));
+
   const value = payload?.entry?.[0]?.changes?.[0]?.value;
   const messages: IncomingWhatsAppMessage[] | undefined = value?.messages;
 
@@ -66,8 +68,11 @@ async function handleIncomingMessage(
   // A human has taken over this conversation — the bot stays silent either way.
   if (customer.paused) return;
 
-  const listReplyId = message.interactive?.list_reply?.id;
-  if (listReplyId?.startsWith("branch_")) {
+  const isListReply = message.type === "interactive" && message.interactive?.type === "list_reply";
+  console.log("message.type:", message.type, "isListReply:", isListReply, "interactive:", message.interactive);
+
+  if (isListReply && message.interactive?.list_reply?.id?.startsWith("branch_")) {
+    const listReplyId = message.interactive.list_reply.id;
     const branchId = Number(listReplyId.slice("branch_".length));
     if (Number.isFinite(branchId)) {
       await setCustomerBranch(phoneNumber, branchId);

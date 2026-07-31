@@ -1,24 +1,58 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { Branch } from "./supabase";
+import type { Product } from "./db-types";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 const MODEL = "claude-sonnet-5";
 
-function buildSystemPrompt(branchName: string | null) {
-  return `You are the WhatsApp assistant for a clothing retailer based in Dubai, UAE.
-The customer you are speaking with is closest to our ${branchName ?? "unspecified"} branch.
+/** Renders the products table into the `Catalog:` section of the system prompt. */
+function formatCatalog(products: Product[]) {
+  if (products.length === 0) {
+    return "(No products are loaded. Do not quote any product or price — offer to connect the customer with the sales team instead.)";
+  }
 
-Rules:
-- Reply in Arabic if the customer writes in Arabic, and in English if they write in English. Match their language and tone.
-- Keep replies short and suitable for WhatsApp (a few sentences, no markdown headers).
-- Help with product questions, sizing, stock availability, pricing, order status, and store hours/location.
-- If you don't know something specific (exact stock levels, order details), say a staff member will follow up rather than guessing.
-- Be warm and professional, in the style of a helpful boutique sales assistant.`;
+  return products
+    .map((product) => {
+      const parts = [`- ${product.name} — AED ${product.price}`];
+      if (product.description) parts.push(product.description);
+      if (!product.in_stock) parts.push("currently out of stock");
+      return parts.join(" — ");
+    })
+    .join("\n");
+}
+
+function buildSystemPrompt(catalogText: string) {
+  return `You are a helpful assistant for Trend Uniform, a school and corporate uniform supplier based in the UAE (trenduniform.ae).
+
+Business info:
+- Trend Uniform supplies uniforms for government schools, charter schools, ADNOC schools, ATS (Applied Technology School), Fatima Medical College, and private schools across the UAE. Also does corporate, medical, security, hospitality, and graduate uniforms.
+- Delivery across all Emirates, 1-3 business days.
+- Returns/exchange: unused items within 14 days, original packaging.
+- Offers logo embroidery and bulk customization for schools/businesses.
+- Prices in AED.
+
+Language rule:
+- If the customer writes in Arabic, reply only in Arabic.
+- If the customer writes in English, reply only in English.
+- Match their language on every message, don't mix unless they do.
+
+Tone and style:
+- Sound like a real, kind, professional human, not a script.
+- Keep replies short and to the point. No long paragraphs.
+- Be warm and respectful, especially since many customers are parents asking about school uniforms.
+- Don't over-explain. Answer the actual question first.
+
+Behavior:
+- Help with product questions, sizing, school-specific uniforms, delivery, and returns.
+- For bulk/school orders or embroidery pricing, offer to connect them with the sales team.
+- Do not invent stock or prices. Use only the catalog provided below.
+
+Catalog:
+${catalogText}`;
 }
 
 export async function generateReply(
-  branch: Branch | null,
+  products: Product[],
   history: { direction: "inbound" | "outbound"; body: string }[]
 ) {
   const messages: Anthropic.MessageParam[] = history.map((m) => ({
@@ -29,7 +63,7 @@ export async function generateReply(
   const response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 500,
-    system: buildSystemPrompt(branch?.name ?? null),
+    system: buildSystemPrompt(formatCatalog(products)),
     messages,
   });
 

@@ -16,6 +16,14 @@ export type Branch = {
   name: string;
 };
 
+export type Product = {
+  id: number;
+  name: string;
+  price: number;
+  description: string | null;
+  in_stock: boolean;
+};
+
 export type Message = {
   id: number;
   phone_number: string;

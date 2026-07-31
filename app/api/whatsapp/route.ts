@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrCreateCustomer, setCustomerBranch, setCustomerState } from "@/lib/customers";
 import { logMessage, getRecentHistory } from "@/lib/messages";
 import { getBranches } from "@/lib/branches";
+import { getProducts } from "@/lib/products";
 import { sendBranchListMessage, sendWhatsAppText } from "@/lib/whatsapp";
 import { generateReply } from "@/lib/claude";
 
@@ -101,10 +102,9 @@ async function handleIncomingMessage(
     return;
   }
 
-  const branches = await getBranches();
-  const branch = branches.find((b) => b.id === customer.branch_id) ?? null;
+  const products = await getProducts();
   const history = await getRecentHistory(phoneNumber);
-  const reply = await generateReply(branch, history);
+  const reply = await generateReply(products, history);
   await replyAndLog(phoneNumber, reply);
 }
 
